@@ -183,32 +183,45 @@ async function run() {
       res.send({ message: "Post created" });
     });
 
-
- app.get('/api/posts', async (req, res) => {
+app.get('/api/posts', async (req, res) => {
   const { page = 1, tag, sort = 'latest' } = req.query;
   const limit = 5;
   const skip = (parseInt(page) - 1) * limit;
 
-  const query = tag ? { tag: { $regex: tag, $options: 'i' } } : {};
+  const query = tag ? { tag: { $regex: tag, $options: "i" } } : {};
 
   try {
-    let posts = await postCollection.find(query).skip(skip).limit(limit).toArray();
+    let posts;
 
+    
     if (sort === 'popular') {
-      posts.sort((a, b) => {
-        const voteA = (a.upVote || 0) - (a.downVote || 0);
-        const voteB = (b.upVote || 0) - (b.downVote || 0);
-        return voteB - voteA;
-      });
+      posts = await postCollection.aggregate([
+        { $match: query },
+        {
+          $addFields: {
+            voteScore: { $subtract: ['$upVote', '$downVote'] }
+          }
+        },
+        { $sort: { voteScore: -1 } },
+        { $skip: skip },
+        { $limit: limit }
+      ]).toArray();
     } else {
-      posts = posts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+     
+      posts = await postCollection.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .toArray();
     }
 
     res.send(posts);
   } catch (err) {
-    res.status(500).send({ error: 'Failed to fetch posts' });
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch posts' });
   }
 });
+
 
 
 
