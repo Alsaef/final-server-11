@@ -387,7 +387,7 @@ async function run() {
       }
     });
 
-    app.post('/api/announcements', verifyToken, async (req, res) => {
+    app.post('/api/announcements', verifyToken, verifyAdmin, async (req, res) => {
       try {
         const announcmemtData = req.body
 
@@ -569,7 +569,7 @@ async function run() {
     // admin control code 
 
 
-    app.get('/api/counting', async (req, res) => {
+    app.get('/api/counting', verifyToken, verifyAdmin, async (req, res) => {
       try {
         const postCount = await postCollection.countDocuments()
         const userCount = await userCollection.countDocuments()
