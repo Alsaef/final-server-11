@@ -60,7 +60,7 @@ async function run() {
           return res.status(403).send({ error: "Forbidden: Invalid token" });
         }
 
-        req.user = decoded; // store decoded info (email, id, etc.)
+       req.decoded = decoded; // store decoded info (email, id, etc.)
         next();
       });
     };
