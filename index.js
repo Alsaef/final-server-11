@@ -12,24 +12,6 @@ app.use(cors())
 app.use(express.json())
 
 
-const verifyToken = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader) {
-    return res.status(401).send({ error: "Unauthorized access: No token" });
-  }
-
-  const token = authHeader.split(" ")[1];
-
-  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-    if (err) {
-      return res.status(403).send({ error: "Forbidden: Invalid token" });
-    }
-
-    req.user = decoded; // store decoded info (email, id, etc.)
-    next();
-  });
-};
 
 
 
@@ -50,7 +32,7 @@ async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
-// databse and collection
+    // databse and collection
     const DB = client.db('ForumsDB');
 
     const postCollection = DB.collection('post');
@@ -62,27 +44,36 @@ async function run() {
     const membershipCollection = DB.collection('membership')
 
 
-    const verifyAdmin = async (req, res, next) => {
-      try {
-        const email = req.decoded?.email;
 
-        if (!email) {
-          return res.status(401).send({ error: true, message: "Unauthorized - No email found" });
-        }
 
-        const query = { email };
-        const user = await userCollection.findOne(query);
+    const verifyToken = (req, res, next) => {
+      const authHeader = req.headers.authorization;
 
-        if (!user || user.role !== "admin") {
-          return res.status(403).send({ error: true, message: "You are not an admin" });
-        }
-
-        next(); // Allow access
-      } catch (error) {
-        console.error("Admin verification failed:", error);
-        return res.status(500).send({ error: true, message: "Internal Server Error" });
+      if (!authHeader) {
+        return res.status(401).send({ error: "Unauthorized access: No token" });
       }
+
+      const token = authHeader.split(" ")[1];
+
+      jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+        if (err) {
+          return res.status(403).send({ error: "Forbidden: Invalid token" });
+        }
+
+        req.user = decoded; // store decoded info (email, id, etc.)
+        next();
+      });
     };
+
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email }
+      const user = await userCollection.findOne(query);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).send({ message: 'forbidden access' })
+      }
+      next();
+    }
 
 
 
@@ -456,7 +447,7 @@ async function run() {
 
 
     // Add a new tag
-    app.post('/api/tags',verifyToken,verifyAdmin, async (req, res) => {
+    app.post('/api/tags', verifyToken, verifyAdmin, async (req, res) => {
       const { name } = req.body;
       if (!name) {
         return res.status(400).send({ error: 'Tag name is required' });
@@ -536,7 +527,7 @@ async function run() {
 
 
 
-    app.post("/api/create-payment-intent",verifyToken, async (req, res) => {
+    app.post("/api/create-payment-intent", verifyToken, async (req, res) => {
       const { price } = req.body;
 
       if (!price) {
@@ -593,7 +584,7 @@ async function run() {
 
 
     // GET: All users with pagination and search
-    app.get("/api/users", verifyToken,verifyAdmin, async (req, res) => {
+    app.get("/api/users", verifyToken, verifyAdmin, async (req, res) => {
       const { page = 1, limit = 10, search = "" } = req.query;
       const skip = (parseInt(page) - 1) * parseInt(limit);
 
@@ -617,7 +608,7 @@ async function run() {
     });
 
     // PATCH: Make admin
-    app.patch("/api/users/admin/:email", verifyToken,verifyAdmin, async (req, res) => {
+    app.patch("/api/users/admin/:email", verifyToken, verifyAdmin, async (req, res) => {
       const { email } = req.params;
       try {
         const result = await userCollection.updateOne(
@@ -634,7 +625,7 @@ async function run() {
 
     // get reported admin
 
-    app.patch('/api/comments/:id/ignore',verifyToken,verifyAdmin, async (req, res) => {
+    app.patch('/api/comments/:id/ignore', verifyToken, verifyAdmin, async (req, res) => {
       const { id } = req.params;
 
       try {
@@ -653,14 +644,14 @@ async function run() {
 
 
     // Delete comment
-    app.delete('/api/comments/:id',verifyToken,verifyAdmin, async (req, res) => {
+    app.delete('/api/comments/:id', verifyToken, verifyAdmin, async (req, res) => {
       const { id } = req.params;
       await commentsCollection.deleteOne({ _id: new ObjectId(id) });
       res.send({ message: "Comment deleted" });
     });
 
     // warng
-    app.patch('/api/users/warn/:email', verifyToken,verifyAdmin, async (req, res) => {
+    app.patch('/api/users/warn/:email', verifyToken, verifyAdmin, async (req, res) => {
       const { email } = req.params;
 
       try {
