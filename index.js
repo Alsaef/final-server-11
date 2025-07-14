@@ -184,45 +184,32 @@ async function run() {
     });
 
 
-    app.get('/api/posts', async (req, res) => {
-      const { page = 1, tag, sort = 'latest' } = req.query;
-      const limit = 5;
-      const skip = (parseInt(page) - 1) * limit;
+ app.get('/api/posts', async (req, res) => {
+  const { page = 1, tag, sort = 'latest' } = req.query;
+  const limit = 5;
+  const skip = (parseInt(page) - 1) * limit;
 
-      const query = tag ? { tag: { $regex: tag, $options: 'i' } } : {};
+  const query = tag ? { tag: { $regex: tag, $options: 'i' } } : {};
 
-      try {
-        let sortOption = {};
+  try {
+    let posts = await postCollection.find(query).skip(skip).limit(limit).toArray();
 
-        if (sort === 'latest') {
-          sortOption = { createdAt: -1 };
-        } else if (sort === 'popular') {
+    if (sort === 'popular') {
+      posts.sort((a, b) => {
+        const voteA = (a.upVote || 0) - (a.downVote || 0);
+        const voteB = (b.upVote || 0) - (b.downVote || 0);
+        return voteB - voteA;
+      });
+    } else {
+      posts = posts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    }
 
-          sortOption = {};
-        }
+    res.send(posts);
+  } catch (err) {
+    res.status(500).send({ error: 'Failed to fetch posts' });
+  }
+});
 
-        let posts = await postCollection
-          .find(query)
-          .skip(skip)
-          .limit(limit)
-          .toArray();
-
-        if (sort === 'popular') {
-          posts.sort((a, b) => {
-            const voteA = (a.upVote || 0) - (a.downVote || 0);
-            const voteB = (b.upVote || 0) - (b.downVote || 0);
-            return voteB - voteA;
-          });
-        } else {
-
-          posts = posts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        }
-
-        res.send(posts);
-      } catch (err) {
-        res.status(500).send({ error: 'Failed to fetch posts' });
-      }
-    });
 
 
 
@@ -682,7 +669,6 @@ async function run() {
         res.status(500).send({ error: "Failed to check warned status" });
       }
     });
-
 
 
 
