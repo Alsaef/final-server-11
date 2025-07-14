@@ -578,7 +578,7 @@ async function run() {
     // admin control code 
 
 
-    app.get('/api/counting', verifyToken,verifyAdmin, async (req, res) => {
+    app.get('/api/counting', async (req, res) => {
       try {
         const postCount = await postCollection.countDocuments()
         const userCount = await userCollection.countDocuments()
